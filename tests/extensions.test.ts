@@ -6,7 +6,7 @@
  * terminal widths, and the status text through a full request lifecycle.
  */
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { visibleWidth } from "@earendil-works/pi-tui";
@@ -389,5 +389,29 @@ describe("live-throughput-status", () => {
 			assistantMessageEvent: { type: "text_delta", delta: "hi" },
 		});
 		expect(h.last()).toBeUndefined();
+	});
+
+	// 回归：只有 message_start 兜底路径（provider 不发 request 钩子）时，
+	// 第二次请求不能继承上一次的 requestStartedAt，否则计时会直接跳成累计间隔。
+	test("第二次请求的等待计时从零开始", () => {
+		const h = makeThroughputHarness();
+		let now = 1_000_000;
+		const clock = spyOn(Date, "now").mockImplementation(() => now);
+
+		h.emit("message_start", { type: "message_start", message: assistantMessage() });
+		expect(h.last()).toBe("waiting · 0.0s");
+
+		h.emit("message_end", {
+			type: "message_end",
+			message: assistantMessage({ input: 10, output: 5, cacheRead: 0, cacheWrite: 0 }),
+		});
+
+		// 一分钟后再发一条请求。
+		now += 60_000;
+		h.emit("message_start", { type: "message_start", message: assistantMessage() });
+		expect(h.last()).toBe("waiting · 0.0s");
+
+		h.emit("session_shutdown", { type: "session_shutdown" });
+		clock.mockRestore();
 	});
 });

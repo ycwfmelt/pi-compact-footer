@@ -168,11 +168,14 @@ export default function (pi: ExtensionAPI) {
 	function startWaiting(ctx: ExtensionContext): void {
 		clearTimers();
 		phase = "waiting";
+		// Always restart the clock. When only the message_start fallback fires,
+		// requestStartedAt would otherwise still hold the previous request's start
+		// time and the counter would jump straight to the accumulated gap.
+		requestStartedAt = Date.now();
 		firstOutputAt = undefined;
 		lastOutputAt = undefined;
 		streamedChars = 0;
 		lastDisplayAt = 0;
-		requestStartedAt ??= Date.now();
 		renderWaiting(ctx);
 		tickTimer = setInterval(() => {
 			if (phase !== "waiting") return;
@@ -219,7 +222,6 @@ export default function (pi: ExtensionAPI) {
 	// Fires immediately before Pi sends a provider payload.
 	pi.on("before_provider_request", async (_event, ctx) => {
 		if (phase === "streaming") return;
-		requestStartedAt = Date.now();
 		startWaiting(ctx);
 	});
 
