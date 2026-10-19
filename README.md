@@ -116,6 +116,8 @@ bun run typecheck
 bun test
 ```
 
+The repo pins the public npm registry in `.npmrc` so the committed `bun.lock` stays registry-neutral. It has to be a project-level `.npmrc` rather than `bunfig.toml`: bun ignores `bunfig.toml`'s `[install].registry` when `~/.npmrc` already sets one.
+
 `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` are `peerDependencies` (pi provides them at runtime) and `devDependencies` (so the typechecker can resolve them). pi installs packages with `--omit=dev --omit=peer`, so the dev copies never reach your pi install.
 
 ## License
